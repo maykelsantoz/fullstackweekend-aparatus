@@ -3,7 +3,7 @@
 import { MenuIcon, MessageCircleIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-// import SidebarMenu from "./sidebar-menu";
+import SidebarMenu from "./sidebar-menu";
 import { Button } from "./ui/button";
 import {
   Sheet,
@@ -33,7 +33,7 @@ const Header = () => {
             <SheetHeader className="border-b px-5 py-6 text-left">
               <SheetTitle className="text-lg font-bold">Menu</SheetTitle>
             </SheetHeader>
-            {/* <SidebarMenu /> */}
+            <SidebarMenu />
           </SheetContent>
         </Sheet>
       </div>
