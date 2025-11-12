@@ -1,12 +1,12 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { actionClient } from "@/lib/auth-client";
 import { prisma } from "@/lib/prisma";
 import { endOfDay, format, startOfDay } from "date-fns";
 import { returnValidationErrors } from "next-safe-action";
 import { headers } from "next/headers";
 import z from "zod";
+import { actionClient } from "../../lib/action-client";
 
 const inputSchema = z.object({
   barbershopId: z.string(),

@@ -1,8 +1,14 @@
 "use client";
 import { Barbershop, BarbershopService } from "@/app/generated/prisma/client";
+import { useQuery } from "@tanstack/react-query";
 import { ptBR } from "date-fns/locale";
+import { useAction } from "next-safe-action/hooks";
 import Image from "next/image";
 import { useState } from "react";
+import { toast } from "sonner";
+import { createBooking } from "../_actions/create-booking";
+import { createBookingCheckoutSession } from "../_actions/create-booking-checkout-session";
+import { getDateAvailableTimeSlots } from "../_actions/get-date-available-time-slots";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Separator } from "./ui/separator";
@@ -13,12 +19,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
-// import { useAction } from "next-safe-action/hooks";
-// import { createBooking } from "../_actions/create-booking";
-import { toast } from "sonner";
-// import { useQuery } from "@tanstack/react-query";
-// import { getDateAvailableTimeSlots } from "../_actions/get-date-available-time-slots";
-// import { createBookingCheckoutSession } from "../_actions/create-booking-checkout-session";
 // import { loadStripe } from "@stripe/stripe-js";
 
 interface ServiceItemProps {
@@ -30,20 +30,20 @@ interface ServiceItemProps {
 export function ServiceItem({ service }: ServiceItemProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string | undefined>();
-  // const { executeAsync, isPending } = useAction(createBooking);
-  // const { executeAsync: executeCreateBookingCheckoutSession } = useAction(
-  //   createBookingCheckoutSession,
-  // );
+  const { executeAsync, isPending } = useAction(createBooking);
+  const { executeAsync: executeCreateBookingCheckoutSession } = useAction(
+    createBookingCheckoutSession,
+  );
   const [sheetIsOpen, setSheetIsOpen] = useState(false);
-  // const { data: availableTimeSlots } = useQuery({
-  //   queryKey: ["date-available-time-slots", service.barbershopId, selectedDate],
-  //   queryFn: () =>
-  //     getDateAvailableTimeSlots({
-  //       barbershopId: service.barbershopId,
-  //       date: selectedDate!,
-  //     }),
-  //   enabled: Boolean(selectedDate),
-  // });
+  const { data: availableTimeSlots } = useQuery({
+    queryKey: ["date-available-time-slots", service.barbershopId, selectedDate],
+    queryFn: () =>
+      getDateAvailableTimeSlots({
+        barbershopId: service.barbershopId,
+        date: selectedDate!,
+      }),
+    enabled: Boolean(selectedDate),
+  });
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -81,17 +81,17 @@ export function ServiceItem({ service }: ServiceItemProps) {
     const minutes = timeSplitted[1];
     const date = new Date(selectedDate);
     date.setHours(Number(hours), Number(minutes));
-    // const checkoutSessionResult = await executeCreateBookingCheckoutSession({
-    //   serviceId: service.id,
-    //   date,
-    // });
-    // if (
-    //   checkoutSessionResult.serverError ||
-    //   checkoutSessionResult.validationErrors
-    // ) {
-    //   toast.error(checkoutSessionResult.validationErrors?._errors?.[0]);
-    //   return;
-    // }
+    const checkoutSessionResult = await executeCreateBookingCheckoutSession({
+      serviceId: service.id,
+      date,
+    });
+    if (
+      checkoutSessionResult.serverError ||
+      checkoutSessionResult.validationErrors
+    ) {
+      toast.error(checkoutSessionResult.validationErrors?._errors?.[0]);
+      return;
+    }
     // const stripe = await loadStripe(
     //   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
     // );
@@ -102,23 +102,23 @@ export function ServiceItem({ service }: ServiceItemProps) {
     // await stripe.redirectToCheckout({
     //   sessionId: checkoutSessionResult.data.id,
     // });
-    // // 10:00
-    // if (!selectedTime || !selectedDate) {
-    //   return;
-    // }
+    // 10:00
+    if (!selectedTime || !selectedDate) {
+      return;
+    }
 
-    // const result = await executeAsync({
-    //   serviceId: service.id,
-    //   date,
-    // });
-    // if (result.serverError || result.validationErrors) {
-    //   toast.error(result.validationErrors?._errors?.[0]);
-    //   return;
-    // }
-    // toast.success("Agendamento criado com sucesso!");
-    // setSelectedDate(undefined);
-    // setSelectedTime(undefined);
-    // setSheetIsOpen(false);
+    const result = await executeAsync({
+      serviceId: service.id,
+      date,
+    });
+    if (result.serverError || result.validationErrors) {
+      toast.error(result.validationErrors?._errors?.[0]);
+      return;
+    }
+    toast.success("Agendamento criado com sucesso!");
+    setSelectedDate(undefined);
+    setSelectedTime(undefined);
+    setSheetIsOpen(false);
   };
 
   return (
@@ -178,7 +178,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
               <Separator />
 
               <div className="flex gap-3 overflow-x-auto px-5 [&::-webkit-scrollbar]:hidden">
-                {/* {availableTimeSlots?.data?.map((time) => (
+                {availableTimeSlots?.data?.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
@@ -187,7 +187,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
                   >
                     {time}
                   </Button>
-                ))} */}
+                ))}
               </div>
 
               <Separator />
@@ -225,7 +225,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
               <div className="px-5 pb-6">
                 <Button
                   className="w-full rounded-full"
-                  // disabled={isConfirmDisabled || isPending}
+                  disabled={isConfirmDisabled || isPending}
                   onClick={handleConfirm}
                 >
                   Confirmar
