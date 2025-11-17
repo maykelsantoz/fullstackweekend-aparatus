@@ -29,7 +29,7 @@ const BarbershopPage = async (props: PageProps<"/barbershops/[id]">) => {
       <div className="relative h-[297px] w-full">
         <div className="absolute top-0 left-0 h-full w-full">
           {/* <div className="absolute top-0 left-0 z-10 h-full w-full bg-linear-to-t from-black to-transparent" /> */}
-          <div className="absolute bottom-0 left-0 z-10 h-1/5 w-full bg-gradient-to-t from-black to-transparent" />
+          <div className="absolute bottom-0 left-0 z-10 h-1/5 w-full bg-linear-to-t from-black to-transparent" />
 
           <Image
             src={barbershop.imageUrl}

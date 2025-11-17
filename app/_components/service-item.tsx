@@ -1,30 +1,67 @@
 "use client";
-import { Barbershop, BarbershopService } from "@/app/generated/prisma/client";
 import { useQuery } from "@tanstack/react-query";
 import { ptBR } from "date-fns/locale";
 import { useAction } from "next-safe-action/hooks";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Barbershop, BarbershopService } from "../../generated/prisma/client";
 import { createBooking } from "../_actions/create-booking";
 import { createBookingCheckoutSession } from "../_actions/create-booking-checkout-session";
 import { getDateAvailableTimeSlots } from "../_actions/get-date-available-time-slots";
+import { BottomSheet } from "./BottomSheet";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Separator } from "./ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "./ui/sheet";
-// import { loadStripe } from "@stripe/stripe-js";
 
 interface ServiceItemProps {
   service: BarbershopService & {
     barbershop: Barbershop;
   };
+}
+
+/* Hook para fechar o sheet ao pressionar voltar */
+// function useCloseOnBack(open: boolean, onClose: () => void) {
+//   useEffect(() => {
+//     if (!open) return;
+
+//     window.history.pushState({ sheet: true }, "");
+
+//     const handler = () => {
+//       onClose();
+//     };
+
+//     window.addEventListener("popstate", handler);
+
+//     return () => {
+//       window.removeEventListener("popstate", handler);
+
+//       if (window.history.state?.sheet) {
+//         window.history.replaceState(null, "");
+//       }
+//     };
+//   }, [open, onClose]);
+// }
+function useCloseOnBack(open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+
+    // Marca o estado atual sem empilhar
+    window.history.replaceState({ sheetOpen: true }, "");
+
+    const handler = () => {
+      onClose();
+      // Remove o flag pra não gerar loop
+      window.history.replaceState(null, "");
+    };
+
+    window.addEventListener("popstate", handler);
+
+    return () => {
+      window.removeEventListener("popstate", handler);
+      window.history.replaceState(null, "");
+    };
+  }, [open, onClose]);
 }
 
 export function ServiceItem({ service }: ServiceItemProps) {
@@ -35,6 +72,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
     createBookingCheckoutSession,
   );
   const [sheetIsOpen, setSheetIsOpen] = useState(false);
+
   const { data: availableTimeSlots } = useQuery({
     queryKey: ["date-available-time-slots", service.barbershopId, selectedDate],
     queryFn: () =>
@@ -44,6 +82,22 @@ export function ServiceItem({ service }: ServiceItemProps) {
       }),
     enabled: Boolean(selectedDate),
   });
+
+  // trava scroll do body
+  useEffect(() => {
+    document.body.style.overflow = sheetIsOpen ? "hidden" : "";
+  }, [sheetIsOpen]);
+
+  const handleSheetChange = (isOpen: boolean) => {
+    setSheetIsOpen(isOpen);
+    if (!isOpen) {
+      setSelectedDate(undefined);
+      setSelectedTime(undefined);
+    }
+  };
+
+  // botão voltar do Android/iOS
+  useCloseOnBack(sheetIsOpen, () => handleSheetChange(false));
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -55,7 +109,6 @@ export function ServiceItem({ service }: ServiceItemProps) {
   });
 
   const priceInReaisInteger = Math.floor(service.priceInCents / 100);
-
   const formattedDate = selectedDate
     ? selectedDate.toLocaleDateString("pt-BR", {
         day: "2-digit",
@@ -69,41 +122,19 @@ export function ServiceItem({ service }: ServiceItemProps) {
   today.setHours(0, 0, 0, 0);
 
   const handleConfirm = async () => {
-    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-      toast.error("Erro ao criar checkout session");
-      return;
-    }
-    if (!selectedTime || !selectedDate) {
-      return;
-    }
-    const timeSplitted = selectedTime.split(":"); // [10, 00]
-    const hours = timeSplitted[0];
-    const minutes = timeSplitted[1];
+    if (!selectedTime || !selectedDate) return;
+
+    const [hours, minutes] = selectedTime.split(":");
     const date = new Date(selectedDate);
     date.setHours(Number(hours), Number(minutes));
-    const checkoutSessionResult = await executeCreateBookingCheckoutSession({
+
+    const checkoutSession = await executeCreateBookingCheckoutSession({
       serviceId: service.id,
       date,
     });
-    if (
-      checkoutSessionResult.serverError ||
-      checkoutSessionResult.validationErrors
-    ) {
-      toast.error(checkoutSessionResult.validationErrors?._errors?.[0]);
-      return;
-    }
-    // const stripe = await loadStripe(
-    //   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
-    // );
-    // if (!stripe || !checkoutSessionResult.data?.id) {
-    //   toast.error("Erro ao carregar Stripe");
-    //   return;
-    // }
-    // await stripe.redirectToCheckout({
-    //   sessionId: checkoutSessionResult.data.id,
-    // });
-    // 10:00
-    if (!selectedTime || !selectedDate) {
+
+    if (checkoutSession.serverError || checkoutSession.validationErrors) {
+      toast.error(checkoutSession.validationErrors?._errors?.[0]);
       return;
     }
 
@@ -111,18 +142,18 @@ export function ServiceItem({ service }: ServiceItemProps) {
       serviceId: service.id,
       date,
     });
+
     if (result.serverError || result.validationErrors) {
       toast.error(result.validationErrors?._errors?.[0]);
       return;
     }
+
     toast.success("Agendamento criado com sucesso!");
-    setSelectedDate(undefined);
-    setSelectedTime(undefined);
-    setSheetIsOpen(false);
+    handleSheetChange(false);
   };
 
   return (
-    <Sheet open={sheetIsOpen} onOpenChange={setSheetIsOpen}>
+    <>
       <div className="border-border bg-card flex items-center justify-center gap-3 rounded-2xl border border-solid p-3">
         <div className="relative size-[110px] shrink-0 overflow-hidden rounded-[10px]">
           <Image
@@ -148,20 +179,37 @@ export function ServiceItem({ service }: ServiceItemProps) {
               <p className="text-card-foreground text-sm leading-[1.4] font-bold whitespace-pre">
                 {priceInReais}
               </p>
-              <SheetTrigger asChild>
-                <Button className="rounded-full px-4 py-2">Reservar</Button>
-              </SheetTrigger>
+
+              <Button
+                className="rounded-full px-4 py-2"
+                onClick={() => handleSheetChange(true)}
+              >
+                Reservar
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <SheetContent className="w-[370px] overflow-y-auto p-0">
+      {/* BottomSheet REAL */}
+      <BottomSheet open={sheetIsOpen} onOpenChange={handleSheetChange}>
         <div className="flex h-full flex-col gap-6">
-          <SheetHeader className="px-5 pt-6">
-            <SheetTitle className="text-lg font-bold">Fazer Reserva</SheetTitle>
-          </SheetHeader>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-6">
+            <div>
+              <p className="text-lg font-bold">Fazer Reserva</p>
+              <p className="text-muted-foreground">{service.name}</p>
+            </div>
 
+            <button
+              onClick={() => handleSheetChange(false)}
+              className="text-muted-foreground text-lg leading-none opacity-95 transition hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Calendário */}
           <div className="flex flex-col gap-4 px-5">
             <Calendar
               mode="single"
@@ -173,16 +221,16 @@ export function ServiceItem({ service }: ServiceItemProps) {
             />
           </div>
 
+          {/* Horários */}
           {selectedDate && (
             <>
               <Separator />
-
-              <div className="flex gap-3 overflow-x-auto px-5 [&::-webkit-scrollbar]:hidden">
+              <div className="grid grid-cols-4 gap-3 px-5">
                 {availableTimeSlots?.data?.map((time) => (
                   <Button
                     key={time}
                     variant={selectedTime === time ? "default" : "outline"}
-                    className="shrink-0 rounded-full px-4 py-2"
+                    className="rounded-full px-4 py-2"
                     onClick={() => setSelectedTime(time)}
                   >
                     {time}
@@ -192,6 +240,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
 
               <Separator />
 
+              {/* Resumo */}
               <div className="flex flex-col gap-3 px-5">
                 <div className="border-border bg-card flex w-full flex-col gap-3 rounded-[10px] border border-solid p-3">
                   <div className="flex items-center justify-between">
@@ -234,7 +283,7 @@ export function ServiceItem({ service }: ServiceItemProps) {
             </>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </BottomSheet>
+    </>
   );
 }

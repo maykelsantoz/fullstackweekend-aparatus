@@ -15,9 +15,9 @@ const inputSchema = z.object({
 export const createBookingCheckoutSession = actionClient
   .inputSchema(inputSchema)
   .action(async ({ parsedInput: { serviceId, date } }) => {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
-    }
+    // if (!process.env.STRIPE_SECRET_KEY) {
+    //   throw new Error("STRIPE_SECRET_KEY is not set");
+    // }
     const session = await auth.api.getSession({
       headers: await headers(),
     });

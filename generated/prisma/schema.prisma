@@ -1,13 +1,6 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider   = "prisma-client-js"
-  output     = "../generated/prisma"
-  engineType = "client"
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -32,45 +25,44 @@ model BarbershopService {
   description  String
   imageUrl     String
   barbershopId String
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
   priceInCents Int
+  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
   bookings     Booking[]
 }
 
 model Booking {
   id             String            @id @default(uuid())
   serviceId      String
-  service        BarbershopService @relation(fields: [serviceId], references: [id])
   barbershopId   String
-  barbershop     Barbershop        @relation(fields: [barbershopId], references: [id])
   userId         String
-  user           User              @relation(fields: [userId], references: [id])
-  date           DateTime          @db.Timestamptz
+  date           DateTime          @db.Timestamptz(6)
   cancelled      Boolean?          @default(false)
-  cancelledAt    DateTime?         @db.Timestamptz
+  cancelledAt    DateTime?         @db.Timestamptz(6)
   stripeChargeId String?
+  barbershop     Barbershop        @relation(fields: [barbershopId], references: [id])
+  service        BarbershopService @relation(fields: [serviceId], references: [id])
+  user           User              @relation(fields: [userId], references: [id])
 }
 
 model User {
   id            String    @id
   name          String
-  email         String
+  email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
+  bookings      Booking[]
   sessions      Session[]
   accounts      Account[]
-  bookings      Booking[]
 
-  @@unique([email])
   @@map("user")
 }
 
 model Session {
   id        String   @id
   expiresAt DateTime
-  token     String
+  token     String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   ipAddress String?
@@ -78,8 +70,18 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([token])
   @@map("session")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
 }
 
 model Account {
@@ -99,15 +101,4 @@ model Account {
   updatedAt             DateTime  @updatedAt
 
   @@map("account")
-}
-
-model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @default(now()) @updatedAt
-
-  @@map("verification")
 }

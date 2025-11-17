@@ -3,7 +3,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { endOfDay, format, startOfDay } from "date-fns";
-import { returnValidationErrors } from "next-safe-action";
 import { headers } from "next/headers";
 import z from "zod";
 import { actionClient } from "../../lib/action-client";
@@ -41,11 +40,11 @@ export const getDateAvailableTimeSlots = actionClient
     const session = await auth.api.getSession({
       headers: await headers(),
     });
-    if (!session?.user) {
-      returnValidationErrors(inputSchema, {
-        _errors: ["Unauthorized"],
-      });
-    }
+    // if (!session?.user) {
+    //   returnValidationErrors(inputSchema, {
+    //     _errors: ["Unauthorized"],
+    //   });
+    // }
     const bookings = await prisma.booking.findMany({
       where: {
         barbershopId,
