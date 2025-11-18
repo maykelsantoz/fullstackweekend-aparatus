@@ -17,6 +17,7 @@ import Image from "next/image";
 import { Button } from "./ui/button";
 // import { useAction } from "next-safe-action/hooks";
 // import { cancelBooking } from "../_actions/cancel-booking";
+import { Booking } from "@/generated/prisma/client";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -27,7 +28,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./ui/alert-dialog";
-// import { Booking } from "@/generated/prisma/client";
 
 interface BookingItemProps {
   booking: {
@@ -48,14 +48,14 @@ interface BookingItemProps {
   };
 }
 
-// const getStatus = (booking: Pick<Booking, "date" | "cancelled">) => {
-//   if (booking.cancelled) {
-//     return "cancelled";
-//   }
-//   const date = new Date(booking.date);
-//   const now = new Date();
-//   return date >= now ? "confirmed" : "finished";
-// };
+const getStatus = (booking: Pick<Booking, "date" | "cancelled">) => {
+  if (booking.cancelled) {
+    return "cancelled";
+  }
+  const date = new Date(booking.date);
+  const now = new Date();
+  return date >= now ? "confirmed" : "finished";
+};
 
 const BookingItem = ({ booking }: BookingItemProps) => {
   const [sheetIsOpen, setSheetIsOpen] = useState(false);
@@ -76,7 +76,7 @@ const BookingItem = ({ booking }: BookingItemProps) => {
   //   executeCancelBooking({ bookingId: booking.id });
   // };
 
-  // const status = getStatus(booking);
+  const status = getStatus(booking);
   const isConfirmed = status === "confirmed";
 
   return (
